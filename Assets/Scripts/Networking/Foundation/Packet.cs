@@ -5,22 +5,28 @@ using UnityEngine;
 
 namespace Networking.Foundation
 {
-    
     /// <summary>Sent from server to client.</summary>
     public enum ServerPackets
     {
-        welcome        = 1,
-        spawnPlayer    = 2,
-        playerPosition = 3,
-        playerRotation = 4
+        welcome                 = 1,
+        matchmakeResult         = 2,
+        matchdata               = 3,
+        turnStartData           = 4,
+        turnEndData             = 5,
+        matchResolution         = 6,
+        serverGameplayConstants = 7
     }
 
     /// <summary>Sent from client to server.</summary>
     public enum ClientPackets
     {
         welcomeReceived = 1,
-        playerMovement  = 2
+        matchmake       = 2,
+        acceptMatch     = 3,
+        submitTurn      = 4,
+        forfeit = 5
     }
+
     public class Packet : IDisposable
     {
         public const int SHORT_SIZE = 2;
@@ -178,7 +184,7 @@ namespace Networking.Foundation
             Write(_value.Length);                             // Add the length of the string to the packet
             buffer.AddRange(Encoding.ASCII.GetBytes(_value)); // Add the string itself
         }
-        
+
         /// <summary>Adds a Vector3 to the packet.</summary>
         public void Write(Vector3 _value)
         {
@@ -186,7 +192,7 @@ namespace Networking.Foundation
             Write(_value.y);
             Write(_value.z);
         }
-        
+
         /// <summary>Adds a Quaternion to the packet.</summary>
         public void Write(Quaternion _value)
         {
@@ -195,6 +201,7 @@ namespace Networking.Foundation
             Write(_value.z);
             Write(_value.w);
         }
+
         #endregion
 
         #region Read Data
@@ -385,12 +392,13 @@ namespace Networking.Foundation
         {
             return new Vector3(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos));
         }
-        
+
         /// <summary>Reads a float from the packet.</summary>
         /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
         public Quaternion ReadQuaternion(bool _moveReadPos = true)
         {
-            return new Quaternion(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos));
+            return new Quaternion(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos),
+                ReadFloat(_moveReadPos));
         }
 
         #endregion

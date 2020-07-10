@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace Networking.Foundation
 {
@@ -17,7 +18,10 @@ namespace Networking.Foundation
         public TCP tcp;
         public UDP udp;
 
+        public TCP match;
+
         private bool isConnected = false;
+        private bool isInMatch = false;
 
         private delegate void PacketHandler(Packet packet);
 
@@ -33,6 +37,8 @@ namespace Networking.Foundation
         {
             tcp = new TCP();
             udp = new UDP();
+            
+            match = new TCP();
         }
 
         public void ConnectToServer()
@@ -42,12 +48,43 @@ namespace Networking.Foundation
 
             InitializeClientData();
             isConnected = true;
-            tcp.Connect();
+            tcp.Connect(Instance.serverIp, Instance.port);
+        }
+
+        public void EnterMatch(string _ip, int _port)
+        {
+            if (_ip == Instance.serverIp && _port == Instance.port)
+            {
+                match = tcp;
+                return;
+            }
+            Assert.IsFalse(isInMatch);
+            if (!isInMatch)
+            {
+                match.Connect(_ip, _port);
+                isInMatch = true;
+            }
+        }
+
+        public void ExitMatch()
+        {
+            Assert.IsTrue(isInMatch);
+            if(isInMatch)
+            {
+                if(match != tcp)
+                {
+                    match.Disconnect();
+                }
+                isInMatch = false;
+            }
         }
 
         public class TCP
         {
             public TcpClient socket;
+
+            public event Action<TCP> OnConnect;
+            public event Action<TCP> OnDisconnectBeforeReset;
 
             private NetworkStream stream;
 
@@ -55,18 +92,20 @@ namespace Networking.Foundation
 
             private byte[] receiveBuffer;
 
-            public void Connect()
+            public void Connect(string ip, int port)
             {
                 socket = new TcpClient() {ReceiveBufferSize = BUFFER_SIZE, SendBufferSize = BUFFER_SIZE};
 
                 receiveBuffer = new byte[BUFFER_SIZE];
 
-                socket.BeginConnect(Instance.serverIp, Instance.port, ConnectCallback, socket);
+                socket.BeginConnect(ip, port, ConnectCallback, socket);
             }
 
             private void ConnectCallback(IAsyncResult result)
             {
                 socket.EndConnect(result);
+
+                socket.NoDelay = true;
 
                 if (!socket.Connected) return;
 
@@ -75,6 +114,8 @@ namespace Networking.Foundation
                 receivedPacket = new Packet();
 
                 stream.BeginRead(receiveBuffer, 0, BUFFER_SIZE, ReceiveCallback, null);
+                
+                OnConnect?.Invoke(this);
             }
 
             private void ReceiveCallback(IAsyncResult result)
@@ -167,10 +208,11 @@ namespace Networking.Foundation
                 return false;
             }
 
-            private void Disconnect()
+            public void Disconnect()
             {
-                Instance.Disconnect();
                 receivedPacket.Dispose();
+                
+                OnDisconnectBeforeReset?.Invoke(this);
 
                 stream         = null;
                 receivedPacket = null;
@@ -256,10 +298,10 @@ namespace Networking.Foundation
                 }
             }
 
-            private void Disconnect()
+            public void Disconnect()
             {
-                Instance.Disconnect();
-
+                socket?.Close();
+                
                 endPoint = null;
                 socket = null;
             }
@@ -270,9 +312,12 @@ namespace Networking.Foundation
             _packetHandlers = new Dictionary<int, PacketHandler>()
             {
                 {(int) ServerPackets.welcome, ClientHandle.Welcome},
-                {(int) ServerPackets.spawnPlayer, ClientHandle.PlayerSpawn},
-                {(int) ServerPackets.playerPosition, ClientHandle.PlayerPosition},
-                {(int) ServerPackets.playerRotation, ClientHandle.PlayerRotation},
+                {(int) ServerPackets.matchmakeResult, ClientHandle.MatchmakeResult},
+                {(int) ServerPackets.matchdata, ClientHandle.MatchDataReceive},
+                {(int) ServerPackets.turnStartData, ClientHandle.TurnStartReceive},
+                {(int) ServerPackets.turnEndData, ClientHandle.TurnEndReceive},
+                {(int) ServerPackets.matchResolution, ClientHandle.MatchResolutionReceived},
+                {(int) ServerPackets.serverGameplayConstants, ClientHandle.SyncGameplayConstants},
             };
 
             Debug.Log("Initialized Packet Handlers.");
@@ -283,8 +328,10 @@ namespace Networking.Foundation
             if (isConnected)
             {
                 isConnected = false;
-                tcp.socket.Close();
-                udp.socket.Close();
+                udp.Disconnect();
+                tcp.Disconnect();
+                
+                match.Disconnect();
 
                 Debug.Log("Disconnected from server.");
             }
