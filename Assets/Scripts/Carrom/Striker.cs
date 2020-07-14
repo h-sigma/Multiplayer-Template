@@ -1,4 +1,5 @@
 ﻿using Carrom.UI;
+using Networking.Foundation;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.EventSystems;
@@ -31,14 +32,14 @@ namespace Carrom
             if (SceneRegistry<CodeElementsType, CodeElements>.GetRandom(CodeElementsType.Board, gameObject.scene, out var codeElement)
             && codeElement is BoardSimulation board)
             {
-                var baseline = board.GetBaseline(gameplay.AwaitingTurn, gameplay.Config.PlayerCount);
+                var baseline = board.GetBaseline(gameplay.AwaitingTurn, Match.Instance.PlayerCount);
                 var position = baseline.GetPosition(value);
                 rigidbody.position = position;
             }
         }
         #endregion
 
-        public void Awake()
+        public override void Awake()
         {
             strikerUi.transform.localPosition = Vector3.zero;
             strikerUi.gameObject.SetActive(false);
@@ -97,7 +98,7 @@ namespace Carrom
         {
             Assert.IsNotNull(rigidbody, "Must have rigidbody on striker.");
 
-            gameplay.TryDoTurn(gameplay.AwaitingTurn, _baselinePos, Mathf.Atan2(direction.y, direction.x), scale01 * flickForce);
+            Match.Instance.SubmitShot(_baselinePos, Mathf.Atan2(direction.y, direction.x));
         }
 
         #endregion

@@ -20,6 +20,8 @@ namespace Networking.Foundation
 
         public TCP match;
 
+        public event Action OnEnteredMatch;
+
         private bool isConnected = false;
         private bool isInMatch = false;
 
@@ -53,12 +55,8 @@ namespace Networking.Foundation
 
         public void EnterMatch(string _ip, int _port)
         {
-            if (_ip == Instance.serverIp && _port == Instance.port)
-            {
-                match = tcp;
-                return;
-            }
             Assert.IsFalse(isInMatch);
+            if (_ip == "0.0.0.0") _ip = "127.0.0.1";
             if (!isInMatch)
             {
                 match.Connect(_ip, _port);
@@ -77,6 +75,11 @@ namespace Networking.Foundation
                 }
                 isInMatch = false;
             }
+        }
+
+        public void DebugMessage(string msg)
+        {
+            ClientSend.SendMessage(msg);
         }
 
         public class TCP
@@ -105,8 +108,6 @@ namespace Networking.Foundation
             {
                 socket.EndConnect(result);
 
-                socket.NoDelay = true;
-
                 if (!socket.Connected) return;
 
                 stream = socket.GetStream();
@@ -115,7 +116,10 @@ namespace Networking.Foundation
 
                 stream.BeginRead(receiveBuffer, 0, BUFFER_SIZE, ReceiveCallback, null);
                 
-                OnConnect?.Invoke(this);
+                ThreadManager.ExecuteOnMainThread(() =>
+                {
+                    OnConnect?.Invoke(this);
+                });
             }
 
             private void ReceiveCallback(IAsyncResult result)
@@ -210,9 +214,12 @@ namespace Networking.Foundation
 
             public void Disconnect()
             {
-                receivedPacket.Dispose();
+                receivedPacket?.Dispose();
                 
-                OnDisconnectBeforeReset?.Invoke(this);
+                ThreadManager.ExecuteOnMainThread(() =>
+                {
+                    OnDisconnectBeforeReset?.Invoke(this);
+                });
 
                 stream         = null;
                 receivedPacket = null;
@@ -311,6 +318,7 @@ namespace Networking.Foundation
         {
             _packetHandlers = new Dictionary<int, PacketHandler>()
             {
+                {(int) ServerPackets.message, ClientHandle.Message},
                 {(int) ServerPackets.welcome, ClientHandle.Welcome},
                 {(int) ServerPackets.matchmakeResult, ClientHandle.MatchmakeResult},
                 {(int) ServerPackets.matchdata, ClientHandle.MatchDataReceive},

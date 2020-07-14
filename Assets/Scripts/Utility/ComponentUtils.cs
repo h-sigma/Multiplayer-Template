@@ -24,7 +24,5 @@ namespace Utility
         {
             if (component == null) component = gameObject.GetComponentInParent<T>();
         }
-        
-        
     }
 }

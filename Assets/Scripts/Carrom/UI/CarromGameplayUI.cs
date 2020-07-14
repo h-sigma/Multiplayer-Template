@@ -12,13 +12,12 @@ namespace Carrom.UI
 
         public void OnEnable()
         {
-            UpdateUI();
-            gameplay.AfterTurnPlayed += UpdateUI;
+            gameplay.onStateChange.AddListener(UpdateUI);
         }
 
         public void OnDisable()
         {
-            gameplay.AfterTurnPlayed -= UpdateUI;
+            gameplay.onStateChange.RemoveListener(UpdateUI);
         }
 
         private void UpdateUI()

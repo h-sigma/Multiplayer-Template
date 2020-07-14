@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -8,23 +9,25 @@ namespace Networking.Foundation
     /// <summary>Sent from server to client.</summary>
     public enum ServerPackets
     {
-        welcome                 = 1,
-        matchmakeResult         = 2,
-        matchdata               = 3,
-        turnStartData           = 4,
-        turnEndData             = 5,
-        matchResolution         = 6,
-        serverGameplayConstants = 7
+        message                 = 1,
+        welcome                 = 2,
+        matchmakeResult         = 3,
+        matchdata               = 4,
+        turnStartData           = 5,
+        turnEndData             = 6,
+        matchResolution         = 7,
+        serverGameplayConstants = 8
     }
 
     /// <summary>Sent from client to server.</summary>
     public enum ClientPackets
     {
-        welcomeReceived = 1,
-        matchmake       = 2,
-        acceptMatch     = 3,
-        submitTurn      = 4,
-        forfeit = 5
+        message         = 1,
+        welcomeReceived = 2,
+        matchmake       = 3,
+        acceptMatch     = 4,
+        submitTurn      = 5,
+        forfeit         = 6
     }
 
     public class Packet : IDisposable
@@ -33,7 +36,7 @@ namespace Networking.Foundation
         public const int INT_SIZE   = 4;
         public const int FLOAT_SIZE = 4;
         public const int LONG_SIZE  = 8;
-
+    
         private List<byte> buffer;
         private byte[]     readableBuffer;
         private int        readPos;
@@ -41,7 +44,7 @@ namespace Networking.Foundation
         /// <summary>Creates a new empty packet (without an ID).</summary>
         public Packet()
         {
-            buffer  = new List<byte>(); // Intitialize buffer
+            buffer  = new List<byte>(); // Initialize buffer
             readPos = 0;                // Set readPos to 0
         }
 
@@ -49,7 +52,7 @@ namespace Networking.Foundation
         /// <param name="_id">The packet ID.</param>
         public Packet(int _id)
         {
-            buffer  = new List<byte>(); // Intitialize buffer
+            buffer  = new List<byte>(); // Initialize buffer
             readPos = 0;                // Set readPos to 0
 
             Write(_id); // Write packet id to the buffer
@@ -59,7 +62,7 @@ namespace Networking.Foundation
         /// <param name="_data">The bytes to add to the packet.</param>
         public Packet(byte[] _data)
         {
-            buffer  = new List<byte>(); // Intitialize buffer
+            buffer  = new List<byte>(); // Initialize buffer
             readPos = 0;                // Set readPos to 0
 
             SetBytes(_data);
@@ -120,7 +123,7 @@ namespace Networking.Foundation
             }
             else
             {
-                readPos -= INT_SIZE; // "Unread" the last read int
+                readPos -= 4; // "Unread" the last read int
             }
         }
 
@@ -186,6 +189,7 @@ namespace Networking.Foundation
         }
 
         /// <summary>Adds a Vector3 to the packet.</summary>
+        /// <param name="_value">The Vector3 to add.</param>
         public void Write(Vector3 _value)
         {
             Write(_value.x);
@@ -194,6 +198,7 @@ namespace Networking.Foundation
         }
 
         /// <summary>Adds a Quaternion to the packet.</summary>
+        /// <param name="_value">The Quaternion to add.</param>
         public void Write(Quaternion _value)
         {
             Write(_value.x);
@@ -236,9 +241,9 @@ namespace Networking.Foundation
             if (buffer.Count > readPos)
             {
                 // If there are unread bytes
-                byte[] _value =
-                    buffer.GetRange(readPos, _length).
-                           ToArray(); // Get the bytes at readPos' position with a range of _length
+                byte[]
+                    _value = buffer.GetRange(readPos, _length).
+                                    ToArray(); // Get the bytes at readPos' position with a range of _length
                 if (_moveReadPos)
                 {
                     // If _moveReadPos is true
@@ -264,7 +269,7 @@ namespace Networking.Foundation
                 if (_moveReadPos)
                 {
                     // If _moveReadPos is true and there are unread bytes
-                    readPos += SHORT_SIZE; // Increase readPos by 2
+                    readPos += 2; // Increase readPos by 2
                 }
 
                 return _value; // Return the short
@@ -286,7 +291,7 @@ namespace Networking.Foundation
                 if (_moveReadPos)
                 {
                     // If _moveReadPos is true
-                    readPos += INT_SIZE; // Increase readPos by 4
+                    readPos += 4; // Increase readPos by 4
                 }
 
                 return _value; // Return the int
@@ -308,7 +313,7 @@ namespace Networking.Foundation
                 if (_moveReadPos)
                 {
                     // If _moveReadPos is true
-                    readPos += LONG_SIZE; // Increase readPos by 8
+                    readPos += 8; // Increase readPos by 8
                 }
 
                 return _value; // Return the long
@@ -330,7 +335,7 @@ namespace Networking.Foundation
                 if (_moveReadPos)
                 {
                     // If _moveReadPos is true
-                    readPos += FLOAT_SIZE; // Increase readPos by 4
+                    readPos += 4; // Increase readPos by 4
                 }
 
                 return _value; // Return the float
@@ -369,9 +374,8 @@ namespace Networking.Foundation
         {
             try
             {
-                int _length = ReadInt(); // Get the length of the string
-                string _value =
-                    Encoding.ASCII.GetString(readableBuffer, readPos, _length); // Convert the bytes to a string
+                int    _length = ReadInt(); // Get the length of the string
+                string _value = Encoding.ASCII.GetString(readableBuffer, readPos, _length); // Convert the bytes to a string
                 if (_moveReadPos && _value.Length > 0)
                 {
                     // If _moveReadPos is true string is not empty
@@ -386,14 +390,14 @@ namespace Networking.Foundation
             }
         }
 
-        /// <summary>Reads a float from the packet.</summary>
+        /// <summary>Reads a Vector3 from the packet.</summary>
         /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
         public Vector3 ReadVector3(bool _moveReadPos = true)
         {
             return new Vector3(ReadFloat(_moveReadPos), ReadFloat(_moveReadPos), ReadFloat(_moveReadPos));
         }
 
-        /// <summary>Reads a float from the packet.</summary>
+        /// <summary>Reads a Quaternion from the packet.</summary>
         /// <param name="_moveReadPos">Whether or not to move the buffer's read position.</param>
         public Quaternion ReadQuaternion(bool _moveReadPos = true)
         {

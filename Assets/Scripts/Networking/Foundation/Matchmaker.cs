@@ -1,4 +1,7 @@
 ﻿using System;
+using UnityEngine;
+using UnityEngine.Assertions;
+using UnityEngine.Events;
 
 namespace Networking.Foundation
 {
@@ -21,31 +24,60 @@ namespace Networking.Foundation
         //todo -- cleanup code to non-mono
         public GameConfig config;
 
+        public SceneTransition toMatch;
+
         private bool lookingForMatches = false;
 
         public bool LookingForMatches => lookingForMatches;
 
-        private Action<MatchmakeResultData> _onSuccess = default;
-        private Action                      _onFailure = default;
-
-        public void TryMatchmaking(Action<MatchmakeResultData> onSuccess, Action onFailure)
+        private MatchmakeResultData _currentMatchmakeResultData;
+        public MatchmakeResultData CurrentMatchmakeResultData
         {
-            var matchmakeRequestData = new MatchmakeRequestData();
-            matchmakeRequestData.Bet = config.bet;
-            matchmakeRequestData.twoPlayer = twoPlayer;
+            get => _currentMatchmakeResultData;
+            private set => _currentMatchmakeResultData = value;
+        }
+
+        [Serializable]
+        public class MatchmakeResultEvent : UnityEvent<MatchmakeResultData>
+        {
+        }
+
+        public MatchmakeResultEvent onMatchFound;
+        public UnityEvent           onMatchNotFound;
+        
+        public void BeginMatchmake()
+        {
+            var matchmakeRequestData = new MatchmakeRequestData {Bet = config.bet, PlayerCount = config.playerCount};
 
             ClientSend.MatchmakeRequest(ref matchmakeRequestData);
+
+            onMatchFound.AddListener(OnMatchmakeSuccess);
+            onMatchNotFound.AddListener(OnMatchmakeFail);
+
+            lookingForMatches = true;
+
+            void OnMatchmakeSuccess(MatchmakeResultData result)
+            {
+                //todo -- should be returned through network
+                CurrentMatchmakeResultData = result;
+                toMatch.TryTransition(true);
+            }
+
+            void OnMatchmakeFail()
+            {
+                Debug.Log($"Failed to matchmake.");
+            }
         }
 
         public void FoundMatch(MatchmakeResultData data)
         {
             if (string.IsNullOrEmpty(data.Auth))
             {
-                _onFailure?.Invoke();
+                onMatchNotFound?.Invoke();
             }
             else
             {
-                _onSuccess?.Invoke(data);
+                onMatchFound?.Invoke(data);
             }
         }
     }

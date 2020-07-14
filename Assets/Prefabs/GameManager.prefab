@@ -56,6 +56,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02d4d920149e3844eabe01e06c68c55e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  transitionOutOfPersistent: {fileID: 11400000, guid: 4fab0147d4b8f8d44a8b0e7f0acce021,
+  transitionOutOfPersistent: {fileID: 11400000, guid: 7bf54150077ad4c4d839daccb4284997,
     type: 2}
   loadingScreen: {fileID: 0}

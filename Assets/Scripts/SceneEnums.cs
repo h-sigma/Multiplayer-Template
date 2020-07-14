@@ -6,5 +6,5 @@
     Start       = 2,
     Spin        = 3,
     Matchmaking = 4,
-    TicTacToe   = 5
+    Carrom      = 5
 }

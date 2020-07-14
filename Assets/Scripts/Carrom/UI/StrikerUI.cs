@@ -1,6 +1,4 @@
-﻿using System;
-using UnityEditor.VersionControl;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Assertions;
 
 namespace Carrom.UI

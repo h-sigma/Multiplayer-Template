@@ -1,8 +1,4 @@
-﻿using System.Diagnostics;
-using Carrom;
-using UnityEngine;
-using UnityEngine.Assertions;
-using UnityEngine.VR;
+﻿using UnityEngine.Assertions;
 
 namespace Networking.Foundation
 {
@@ -36,6 +32,16 @@ namespace Networking.Foundation
         }
 
         #region Packets
+
+        public static void SendMessage(string message)
+        {
+            using (var packet = new Packet((int) ClientPackets.message))
+            {
+                packet.Write(message);
+                //SendUDPData(packet);
+                SendTCPData(packet);
+            }
+        }
 
         public static void WelcomeReceived()
         {

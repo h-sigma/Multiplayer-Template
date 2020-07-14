@@ -7,6 +7,12 @@ namespace Networking.Foundation
 {
     public static class ClientHandle
     {
+        public static void Message(Packet packet)
+        {
+            string msg = packet.ReadString();
+            Debug.Log($"Message received from server: {msg}");
+        }
+
         public static void Welcome(Packet packet)
         {
             string msg = packet.ReadString();
@@ -58,8 +64,7 @@ namespace Networking.Foundation
                 Match.Instance.PlayTurn(ref turnStart);
             }
         }
-        
-        
+
         public static void TurnEndReceive(Packet packet)
         {
             var turnEnd = new TurnEndData();

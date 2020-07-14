@@ -1,20 +1,20 @@
 ﻿using TMPro;
-using UnityEngine;
+using UnityEngine.Events;
 
 namespace Networking.Foundation
 {
     public class ClientTestUIHandler : Singleton<ClientTestUIHandler>
     {
         public TextMeshProUGUI usernameField;
+        public UnityEvent onConnect;
         
         public void OnConnectClick()
         {
-            Client.Instance.ConnectToServer();
-            var canvas = GetComponentInChildren<Canvas>();
-            if (canvas != null)
+            Client.Instance.tcp.OnConnect += (tcp) =>
             {
-                canvas.enabled = false;
-            }
+                onConnect?.Invoke();
+            };
+            Client.Instance.ConnectToServer();
         }
 
     }

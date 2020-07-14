@@ -7,7 +7,7 @@ namespace Carrom.UI
         public bool setZeroOnAwake = true;
         public abstract void SliderValueChanged(float value);
         
-        public void Awake()
+        public virtual void Awake()
         {
             if(setZeroOnAwake)
                 SliderValueChanged(0.0f);
