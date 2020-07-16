@@ -41,11 +41,13 @@ namespace Networking.Foundation
             var matchData = new MatchData();
             matchData.ReadFromPacket(packet);
 
-            Assert.IsNotNull(Match.Instance);
+            
+             Assert.IsNotNull(Match.Instance);
             if (Match.Instance != null)
             {
                 Match.Instance.ReceiveMatchData(ref matchData);
             }
+            
         }
         
         public static void TurnStartReceive(Packet packet)

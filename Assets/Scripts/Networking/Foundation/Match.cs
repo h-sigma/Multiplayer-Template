@@ -71,12 +71,12 @@ namespace Networking.Foundation
 
                 Debug.Log($"Accepting Match.");
 
-                Unsubscribe(tcp);
+                //Unsubscribe(tcp);
             }
 
             void ErrorConnectingToMatchServer(Client.TCP tcp)
             {
-                Unsubscribe(tcp);
+                //Unsubscribe(tcp);
                 Debug.Log(
                     $"Did find match, but encountered error in connecting to Match Server: {tcp.socket.Client.RemoteEndPoint}");
             }
