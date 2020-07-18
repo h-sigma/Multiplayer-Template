@@ -27,25 +27,29 @@ namespace Networking.Foundation
 
         public static void MatchmakeResult(Packet packet)
         {
-            MatchmakeResultData data = new MatchmakeResultData();
-            data.ReadFromPacket(packet);
-            
-            Debug.Log($"Matchmake result received. {data.ToString()}");
-            
-            Assert.IsNotNull(Matchmaker.Instance);
-            Matchmaker.Instance.FoundMatch(data);
+            if (Matchmaker.Instance != null)
+            {
+                MatchmakeResultData data = new MatchmakeResultData();
+                data.ReadFromPacket(packet);
+                Matchmaker.Instance.FoundMatch(data);
+            }
+            else
+            {
+                NetworkStream<MatchmakeResultData>.Enqueue(packet);
+            }
         }
 
         public static void MatchDataReceive(Packet packet)
         {
-            var matchData = new MatchData();
-            matchData.ReadFromPacket(packet);
-
-            
-             Assert.IsNotNull(Match.Instance);
             if (Match.Instance != null)
             {
+                var matchData = new MatchData();
+                matchData.ReadFromPacket(packet);
                 Match.Instance.ReceiveMatchData(ref matchData);
+            }
+            else
+            {
+                NetworkStream<MatchData>.Enqueue(packet);
             }
             
         }
@@ -60,34 +64,41 @@ namespace Networking.Foundation
 
         public static void TurnStartReceive(ref TurnStartData turnStart)
         {
-            Assert.IsNotNull(Match.Instance);
             if (Match.Instance != null)
             {
                 Match.Instance.PlayTurn(ref turnStart);
+            }
+            else
+            {
+                NetworkStream<TurnStartData>.Enqueue(ref turnStart);
             }
         }
 
         public static void TurnEndReceive(Packet packet)
         {
-            var turnEnd = new TurnEndData();
-            turnEnd.ReadFromPacket(packet);
-            
-            Assert.IsNotNull(Match.Instance);
             if (Match.Instance != null)
             {
+                var turnEnd = new TurnEndData();
+                turnEnd.ReadFromPacket(packet);
                 Match.Instance.TurnEnd(ref turnEnd);
+            }
+            else
+            {
+                NetworkStream<TurnEndData>.Enqueue(packet);
             }
         }
 
         public static void MatchResolutionReceived(Packet packet)
         {
-            var matchResolution = new MatchResolutionData();
-            matchResolution.ReadFromPacket(packet);
-            
-            Assert.IsNotNull(Match.Instance);
             if (Match.Instance != null)
             {
+                var matchResolution = new MatchResolutionData();
+                matchResolution.ReadFromPacket(packet);
                 Match.Instance.ResolveMatch(ref matchResolution);
+            }
+            else
+            {
+                NetworkStream<MatchResolutionData>.Enqueue(packet);
             }
         }
         
@@ -98,38 +109,5 @@ namespace Networking.Foundation
             
             CarromGameplayHelper.LoadGameplayConstants(gameplayConstants);
         }
-
-        /*
-        public static void PlayerSpawn(Packet packet)
-        {
-            int id = packet.ReadInt();
-            string username = packet.ReadString();
-            Vector3 position = packet.ReadVector3();
-            Quaternion rotation = packet.ReadQuaternion();
-            
-            GameManager.Instance.SpawnPlayer(id, username, position, rotation);
-        }
-
-        public static void PlayerPosition(Packet packet)
-        {
-            var id       = packet.ReadInt();
-            var position = packet.ReadVector3();
-
-            if (GameManager.players.TryGetValue(id, out var manager))
-            {
-                manager.SetPosition(position);
-            }
-        }
-
-        public static void PlayerRotation(Packet packet)
-        {
-            var    id       = packet.ReadInt();
-            var rotation = packet.ReadQuaternion();
-            
-            if (GameManager.players.TryGetValue(id, out var manager))
-            {
-                manager.SetRotation(rotation);
-            }
-        }*/
     }
 }

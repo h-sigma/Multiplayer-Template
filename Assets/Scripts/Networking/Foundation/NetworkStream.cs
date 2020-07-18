@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Networking.Foundation;
-using UnityEngine;
+using System.Linq;
 
-namespace Networking
+namespace Networking.Foundation
 {
     public enum StreamItemStatus
     {
@@ -29,7 +28,7 @@ namespace Networking
             OnAfterStreamUpdate?.Invoke();
         }
     }
-
+    
     public static class NetworkStream<TStruct> where TStruct : struct, IPacketSerializable
     {
         #region Definitions
@@ -118,6 +117,11 @@ namespace Networking
             return _queue.GetEnumerator();
         }
 
+        public static IList<DataWrapper> GetAsListForDebug()
+        {
+            return _queue;
+        }
+
         #endregion
 
         #region Private Methods
@@ -148,8 +152,8 @@ namespace Networking
                     case StreamItemStatus.MarkedForRemoval:
                         Expire(item);
                         break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    case StreamItemStatus.Expired:
+                        break;
                 }
             }
 

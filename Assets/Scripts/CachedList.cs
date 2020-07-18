@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
+public class CachedList<T> : IList<T>, ICollection<T>, IEnumerable<T> where T : new()
 {
     private List<T> _list;
     private int     _validItemCount;
@@ -10,7 +10,7 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
     public CachedList()
     {
         _validItemCount = 0;
-        _list = new List<T>();
+        _list           = new List<T>();
     }
 
     private void Swap(int a, int b)
@@ -48,6 +48,7 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
         {
             _list.Add(item);
         }
+
         _validItemCount++;
     }
 
@@ -64,7 +65,6 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
 
     public void CopyTo(T[] array, int arrayIndex)
     {
-        
     }
 
     public bool Remove(T item)
@@ -81,9 +81,36 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
         return true;
     }
 
-    public int CachedCapacity => _list.Count;
-    public int  Count      => _validItemCount;
-    public bool IsReadOnly => false;
+    public int  CachedCapacity => _list.Count;
+    public int  Count          => _validItemCount;
+    public bool IsReadOnly     => false;
+
+    #endregion
+
+    #region IList
+
+    public int IndexOf(T item)
+    {
+        var index = _list.IndexOf(item);
+        if (index >= _validItemCount) return -1;
+        return index;
+    }
+
+    public void Insert(int index, T item)
+    {
+        throw new NotImplementedException();
+    }
+
+    void IList<T>.RemoveAt(int index)
+    {
+        RemoveAt(index);
+    }
+
+    public T this[int index]
+    {
+        get { return _list[index]; }
+        set { _list[index] = value; }
+    }
 
     #endregion
 
@@ -112,7 +139,7 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
     {
         if (HasCache)
         {
-            var temp = _list[_validItemCount - 1];
+            var temp = _list[_validItemCount];
             _validItemCount++;
             return temp;
         }
@@ -123,7 +150,7 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
             return temp;
         }
     }
-    
+
     public void RemoveAll(Func<T, bool> func)
     {
         for (int i = _validItemCount - 1; i >= 0; i--)
@@ -135,9 +162,7 @@ public class CachedList<T> : ICollection<T>, IEnumerable<T> where T : new()
         }
     }
 
-    public T this[int index] => _list[index];
-
-    public bool TryAddCached(out T result)
+    public bool TryGetCached(out T result)
     {
         if (HasCache)
         {
