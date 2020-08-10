@@ -31,7 +31,7 @@ namespace Networking.PlayFabCustom
 
         public void Start()
         {
-            if (PlayFabTitleConfig.instance.AllowSilentSignup)
+            if (PlayFabTitleConfig.Instance.AllowSilentSignup)
             {
                 SignalState(State.Default);
                 SubscribeToAuthService();
@@ -111,7 +111,7 @@ namespace Networking.PlayFabCustom
             UnsubscribeFromAuthService();
 
             SignalState(State.Success, success);
-            PlayFabTitleConfig.instance.IsLoggedIn = true;
+            PlayFabTitleConfig.Instance.IsLoggedIn = true;
         }
 
         private void AuthFailure(PlayFabError error)
@@ -119,7 +119,7 @@ namespace Networking.PlayFabCustom
             UnsubscribeFromAuthService();
 
             SignalState(State.Error, error);
-            PlayFabTitleConfig.instance.IsLoggedIn = false;
+            PlayFabTitleConfig.Instance.IsLoggedIn = false;
 #if LOG_NETWORK
             if(error != null)
                 Debug.Log("Auth failed: " + error.GenerateErrorReport(), this);

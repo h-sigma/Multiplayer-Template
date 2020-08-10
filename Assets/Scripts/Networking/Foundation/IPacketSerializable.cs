@@ -1,15 +1,10 @@
 ﻿using System;
 using Carrom;
+using HarshCommon.Networking;
 using UnityEngine;
 
 namespace Networking.Foundation
 {
-    public interface IPacketSerializable
-    {
-        void ReadFromPacket(Packet packet);
-        void WriteToPacket(Packet  packet);
-    }
-
     public struct MatchmakeRequestData : IPacketSerializable, IEquatable<MatchmakeRequestData>
     {
         public int Bet;
@@ -76,6 +71,7 @@ namespace Networking.Foundation
 
     public struct MatchData : IPacketSerializable
     {
+        //todo -- kvp 
         public int          PlayerCount;
         public string       MatchUniqueId;
         public PlayerNumber YourPlayerNumber;
@@ -114,15 +110,18 @@ namespace Networking.Foundation
 
     public struct SubmitTurnData : IPacketSerializable
     {
+        //todo -- force factor
         public string Auth;
         public float  Baseline01;
         public float  AngleRad;
+        public float ForceFactor;
 
         public void ReadFromPacket(Packet packet)
         {
             Auth       = packet.ReadString();
             Baseline01 = packet.ReadFloat();
             AngleRad   = packet.ReadFloat();
+            ForceFactor = packet.ReadFloat();
         }
 
         public void WriteToPacket(Packet packet)
@@ -130,11 +129,13 @@ namespace Networking.Foundation
             packet.Write(Auth);
             packet.Write(Baseline01);
             packet.Write(AngleRad);
+            packet.Write(ForceFactor);
         }
     }
     
     public struct TurnStartData : IPacketSerializable
     {
+        public int TurnId;
         public PlayerNumber PlayerNumber;
         public float        Baseline01;
         public float        AngleRad;
@@ -142,6 +143,7 @@ namespace Networking.Foundation
 
         public void ReadFromPacket(Packet packet)
         {
+            TurnId = packet.ReadInt();
             PlayerNumber = (PlayerNumber) packet.ReadInt();
             Baseline01   = packet.ReadFloat();
             AngleRad     = packet.ReadFloat();
@@ -150,6 +152,7 @@ namespace Networking.Foundation
 
         public void WriteToPacket(Packet packet)
         {
+            packet.Write(TurnId);
             packet.Write((int)PlayerNumber);
             packet.Write(Baseline01);
             packet.Write(AngleRad);

@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using HarshCommon.Patterns.Singleton;
+using TMPro;
 using UnityEngine.Events;
 
 namespace Networking.Foundation

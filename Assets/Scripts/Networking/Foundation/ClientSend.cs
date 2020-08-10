@@ -1,4 +1,5 @@
-﻿using UnityEngine.Assertions;
+﻿using HarshCommon.Networking;
+using UnityEngine.Assertions;
 
 namespace Networking.Foundation
 {
@@ -96,16 +97,6 @@ namespace Networking.Foundation
         {
             Assert.IsNotNull(Client.Instance.match);
             SendStruct(ref submitTurnData, ClientPackets.submitTurn, Client.Instance.match);
-
-            /* todo -- check delay of turn start arriving from server
-            Assert.IsNotNull(Match.Instance);
-            var turnStart = new TurnStartData();
-            turnStart.Baseline01 = submitTurnData.Baseline01;
-            turnStart.AngleRad = submitTurnData.AngleRad;
-            turnStart.PlayerNumber = Match.Instance.MatchData.PlayerNumber;
-            turnStart.Force = CarromGameplayHelper.GetServerConstants().Force;
-            
-            ClientHandle.TurnStartReceive(ref turnStart);*/
         }
 
         public static void Forfeit(string Auth)

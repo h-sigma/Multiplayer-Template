@@ -1,5 +1,7 @@
 ﻿using System.Net;
 using Carrom;
+using HarshCommon.Networking;
+using HarshCommon.NetworkStream;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -25,27 +27,22 @@ namespace Networking.Foundation
             Client.Instance.udp.Connect(((IPEndPoint) Client.Instance.tcp.socket.Client.LocalEndPoint).Port);
         }
 
-        public static void MatchmakeResult(Packet packet)
+        //todo -- remove all instant responses
+
+        public static void ForwardToNetworkStream<T>(Packet packet) where T : struct, IPacketSerializable
         {
-            if (Matchmaker.Instance != null)
-            {
-                MatchmakeResultData data = new MatchmakeResultData();
-                data.ReadFromPacket(packet);
-                Matchmaker.Instance.FoundMatch(data);
-            }
-            else
-            {
-                NetworkStream<MatchmakeResultData>.Enqueue(packet);
-            }
+            NetworkStream<T>.Enqueue(packet);
         }
 
-        public static void MatchDataReceive(Packet packet)
+        /*
+         public static void MatchDataReceive(Packet packet)
         {
             if (Match.Instance != null)
             {
                 var matchData = new MatchData();
                 matchData.ReadFromPacket(packet);
                 Match.Instance.ReceiveMatchData(ref matchData);
+                NetworkStream<MatchData>.Enqueue(ref matchData);
             }
             else
             {
@@ -66,7 +63,8 @@ namespace Networking.Foundation
         {
             if (Match.Instance != null)
             {
-                Match.Instance.PlayTurn(ref turnStart);
+                Match.Instance.PlayTurn(turnStart);
+                NetworkStream<TurnStartData>.Enqueue(ref turnStart);
             }
             else
             {
@@ -81,6 +79,7 @@ namespace Networking.Foundation
                 var turnEnd = new TurnEndData();
                 turnEnd.ReadFromPacket(packet);
                 Match.Instance.TurnEnd(ref turnEnd);
+                NetworkStream<TurnEndData>.Enqueue(ref turnEnd);
             }
             else
             {
@@ -95,12 +94,14 @@ namespace Networking.Foundation
                 var matchResolution = new MatchResolutionData();
                 matchResolution.ReadFromPacket(packet);
                 Match.Instance.ResolveMatch(ref matchResolution);
+                NetworkStream<MatchResolutionData>.Enqueue(ref matchResolution);
             }
             else
             {
                 NetworkStream<MatchResolutionData>.Enqueue(packet);
             }
         }
+        */
         
         public static void SyncGameplayConstants(Packet packet)
         {

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using HarshCommon.Networking;
+using HarshCommon.Patterns.Singleton;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -23,7 +25,7 @@ namespace Networking.Foundation
         public event Action OnEnteredMatch;
 
         private bool isConnected = false;
-        private bool isInMatch = false;
+        private bool isInMatch   = false;
 
         private delegate void PacketHandler(Packet packet);
 
@@ -39,7 +41,7 @@ namespace Networking.Foundation
         {
             tcp = new TCP();
             udp = new UDP();
-            
+
             match = new TCP();
         }
 
@@ -67,12 +69,13 @@ namespace Networking.Foundation
         public void ExitMatch()
         {
             Assert.IsTrue(isInMatch);
-            if(isInMatch)
+            if (isInMatch)
             {
-                if(match != tcp)
+                if (match != tcp)
                 {
                     match.Disconnect();
                 }
+
                 isInMatch = false;
             }
         }
@@ -115,11 +118,8 @@ namespace Networking.Foundation
                 receivedPacket = new Packet();
 
                 stream.BeginRead(receiveBuffer, 0, BUFFER_SIZE, ReceiveCallback, null);
-                
-                ThreadManager.ExecuteOnMainThread(() =>
-                {
-                    OnConnect?.Invoke(this);
-                });
+
+                ThreadManager.ExecuteOnMainThread(() => { OnConnect?.Invoke(this); });
             }
 
             private void ReceiveCallback(IAsyncResult result)
@@ -215,11 +215,8 @@ namespace Networking.Foundation
             public void Disconnect()
             {
                 receivedPacket?.Dispose();
-                
-                ThreadManager.ExecuteOnMainThread(() =>
-                {
-                    OnDisconnectBeforeReset?.Invoke(this);
-                });
+
+                ThreadManager.ExecuteOnMainThread(() => { OnDisconnectBeforeReset?.Invoke(this); });
 
                 stream         = null;
                 receivedPacket = null;
@@ -308,9 +305,9 @@ namespace Networking.Foundation
             public void Disconnect()
             {
                 socket?.Close();
-                
+
                 endPoint = null;
-                socket = null;
+                socket   = null;
             }
         }
 
@@ -320,11 +317,11 @@ namespace Networking.Foundation
             {
                 {(int) ServerPackets.message, ClientHandle.Message},
                 {(int) ServerPackets.welcome, ClientHandle.Welcome},
-                {(int) ServerPackets.matchmakeResult, ClientHandle.MatchmakeResult},
-                {(int) ServerPackets.matchdata, ClientHandle.MatchDataReceive},
-                {(int) ServerPackets.turnStartData, ClientHandle.TurnStartReceive},
-                {(int) ServerPackets.turnEndData, ClientHandle.TurnEndReceive},
-                {(int) ServerPackets.matchResolution, ClientHandle.MatchResolutionReceived},
+                {(int) ServerPackets.matchmakeResult, ClientHandle.ForwardToNetworkStream<MatchmakeResultData>},
+                {(int) ServerPackets.matchdata, ClientHandle.ForwardToNetworkStream<MatchData>},
+                {(int) ServerPackets.turnStartData, ClientHandle.ForwardToNetworkStream<TurnStartData>},
+                {(int) ServerPackets.turnEndData, ClientHandle.ForwardToNetworkStream<TurnEndData>},
+                {(int) ServerPackets.matchResolution, ClientHandle.ForwardToNetworkStream<MatchResolutionData>},
                 {(int) ServerPackets.serverGameplayConstants, ClientHandle.SyncGameplayConstants},
             };
 
@@ -338,7 +335,7 @@ namespace Networking.Foundation
                 isConnected = false;
                 udp.Disconnect();
                 tcp.Disconnect();
-                
+
                 match.Disconnect();
 
                 Debug.Log("Disconnected from server.");

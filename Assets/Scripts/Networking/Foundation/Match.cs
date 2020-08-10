@@ -1,6 +1,9 @@
-﻿using Carrom;
+﻿using System.Collections.Generic;
+using Carrom;
+using HarshCommon.NetworkStream;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.Events;
 
 namespace Networking.Foundation
 {
@@ -27,6 +30,24 @@ namespace Networking.Foundation
 
         #endregion
 
+        #region Events
+
+        [System.Serializable]
+        public class MatchDataReceivedEvent : UnityEvent<MatchData>
+        {
+        }
+
+        public MatchDataReceivedEvent onMatchDataReceived;
+
+        [System.Serializable]
+        public class MatchResolvedEvent : UnityEvent<MatchResolutionData>
+        {
+        }
+
+        public MatchResolvedEvent onMatchResolved;
+
+        #endregion
+
         #region Sometimes-Available Singleton
 
         public static Match Instance;
@@ -36,32 +57,64 @@ namespace Networking.Foundation
             if (Instance != null && Instance != this)
             {
                 Destroy(this);
+                return;
             }
             else
             {
                 Instance = this;
             }
 
-            AcceptMatchAndSetup();
+            SubscribeToNetworkStream();
+
+            void SubscribeToNetworkStream()
+            {
+                NetworkStream<MatchmakeResultData>.OnStreamHasItems += AcceptMatchAndSetup;
+                NetworkStream<MatchData>.OnStreamHasItems           += ReceiveMatchData;
+                NetworkStream<TurnStartData>.OnStreamHasItems       += PlayTurn;
+                NetworkStream<TurnEndData>.OnStreamHasItems         += TurnEnd;
+                NetworkStream<MatchResolutionData>.OnStreamHasItems += ResolveMatch;
+            }
         }
 
         public void OnDisable()
         {
             if (Instance == this)
+            {
                 Instance = null;
+            }
+
+            UnsubscribeToNetworkStream();
+
+            void UnsubscribeToNetworkStream()
+            {
+                NetworkStream<MatchmakeResultData>.OnStreamHasItems -= AcceptMatchAndSetup;
+                NetworkStream<MatchData>.OnStreamHasItems           -= ReceiveMatchData;
+                NetworkStream<TurnStartData>.OnStreamHasItems       -= PlayTurn;
+                NetworkStream<TurnEndData>.OnStreamHasItems         -= TurnEnd;
+                NetworkStream<MatchResolutionData>.OnStreamHasItems -= ResolveMatch;
+            }
         }
 
         #endregion
 
         #region Match Setup
 
-        public void AcceptMatchAndSetup()
+        public void AcceptMatchAndSetup(IEnumerable<NetworkStream<MatchmakeResultData>.DataWrapper> dataWrappers)
         {
-            var matchmakeResult = Matchmaker.Instance.CurrentMatchmakeResultData;
+            foreach (var data in dataWrappers)
+            {
+                if (data.IsNotExpired && !isInMatch)
+                {
+                    _auth = data.Data.Auth;
+
+                    Client.Instance.match = Client.Instance.tcp;
+                    AcceptFoundMatch(Client.Instance.match);
+
+                    data.MarkForRemoval();
+                }
+            }
             /*Client.Instance.EnterMatch(matchmakeResult.MatchServerAddress, matchmakeResult.MatchServerPort);
             Subscribe(Client.Instance.match); todo */
-            Client.Instance.match = Client.Instance.tcp;
-            AcceptFoundMatch(Client.Instance.match);
 
             void AcceptFoundMatch(Client.TCP tcp)
             {
@@ -70,78 +123,94 @@ namespace Networking.Foundation
                 ClientSend.AcceptMatch(ref acceptMatch);
 
                 Debug.Log($"Accepting Match.");
-
-                //Unsubscribe(tcp);
             }
 
             void ErrorConnectingToMatchServer(Client.TCP tcp)
             {
-                //Unsubscribe(tcp);
                 Debug.Log(
                     $"Did find match, but encountered error in connecting to Match Server: {tcp.socket.Client.RemoteEndPoint}");
             }
-
-            /*
-             void Subscribe(Client.TCP tcp)
-            {
-                Assert.IsNotNull(tcp);
-                tcp.OnConnect               += AcceptFoundMatch;
-                tcp.OnDisconnectBeforeReset += ErrorConnectingToMatchServer;
-            }
-
-            void Unsubscribe(Client.TCP tcp)
-            {
-                Assert.IsNotNull(tcp);
-                tcp.OnConnect               -= AcceptFoundMatch;
-                tcp.OnDisconnectBeforeReset -= ErrorConnectingToMatchServer;
-            }
-            */
         }
 
-        public void ReceiveMatchData(ref MatchData matchData)
+        public void ReceiveMatchData(IEnumerable<NetworkStream<MatchData>.DataWrapper> dataWrappers)
         {
-            PlayerCount = matchData.PlayerCount;
-            _matchData = matchData;
-            _isInMatch = true;
+            foreach (var matchData in dataWrappers)
+            {
+                if (matchData.IsNotExpired && !isInMatch)
+                {
+                    PlayerCount = matchData.Data.PlayerCount;
+                    _matchData  = matchData.Data;
+                    _isInMatch  = true;
 
-            gameplay.BeginGame(this);
+                    gameplay.BeginGame(this);
+
+                    onMatchDataReceived.Invoke(matchData.Data);
+                }
+
+                matchData.MarkForRemoval();
+            }
         }
 
         #endregion
 
         #region Gameplay
 
-        public void SubmitShot(float baseline01, float angleRad)
+        public void SubmitShot(float baseline01, float angleRad, float forceFactor)
         {
             var submitData = new SubmitTurnData();
-            submitData.Auth       = Auth;
-            submitData.Baseline01 = baseline01;
-            submitData.AngleRad   = angleRad;
+            submitData.Auth        = Auth;
+            submitData.Baseline01  = baseline01;
+            submitData.AngleRad    = angleRad;
+            submitData.ForceFactor = forceFactor;
 
             ClientSend.SubmitTurn(ref submitData);
         }
 
         #endregion
 
-        public void PlayTurn(ref TurnStartData turnStart)
-        {
-            Debug.Log(
-                $"Wanting to play turn Base:{turnStart.Baseline01}\tForce:{turnStart.Force}\tAngle:{turnStart.AngleRad}\tPlayer:{turnStart.PlayerNumber}");
+        #region Handle Network Events
 
-            gameplay.TryDoTurn(turnStart);
+        public static readonly AnimationControlSemaphore AnimationControl = new AnimationControlSemaphore(1);
+
+        public void PlayTurn(IEnumerable<NetworkStream<TurnStartData>.DataWrapper> dataWrappers)
+        {
+            foreach (var turnStart in dataWrappers)
+            {
+                if (turnStart.IsNotExpired && isInMatch && gameplay.CanStartTurn(turnStart.Data.TurnId))
+                {
+                    gameplay.StartCoroutine(gameplay.TryDoTurn(turnStart.Data, () => turnStart.MarkForRemoval(), null));
+                }
+            }
         }
 
-        public void TurnEnd(ref TurnEndData turnEnd)
+        public void TurnEnd(IEnumerable<NetworkStream<TurnEndData>.DataWrapper> dataWrappers)
         {
             Debug.Log($"Turn End received from Server.");
 
-            gameplay.LoadStateFromPendingTurn(turnEnd);
+            foreach (var turnEnd in dataWrappers)
+            {
+                if (turnEnd.IsNotExpired && isInMatch && gameplay.CanEndTurn(turnEnd.Data.turnId))
+                {
+                    gameplay.LoadStateFromPendingTurn(turnEnd.Data);
+                    turnEnd.MarkForRemoval();
+                }
+            }
         }
 
-        public void ResolveMatch(ref MatchResolutionData matchResolution)
+        public void ResolveMatch(IEnumerable<NetworkStream<MatchResolutionData>.DataWrapper> dataWrappers)
         {
-            Debug.Log($"Match resolved. {matchResolution.Winner.ToString()}");
-            Client.Instance.match.Disconnect();
+            foreach (var resolution in dataWrappers)
+            {
+                Debug.Log($"Match resolved. {resolution.Data.Winner.ToString()}");
+                Client.Instance.match.Disconnect();
+                // todo -- proper resolution
+
+                resolution.MarkForRemoval();
+
+                onMatchResolved?.Invoke(resolution.Data);
+            }
         }
+
+        #endregion
     }
 }

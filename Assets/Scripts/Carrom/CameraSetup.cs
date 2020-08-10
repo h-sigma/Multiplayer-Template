@@ -6,18 +6,21 @@ namespace Carrom
     public class CameraSetup : MonoBehaviour
     {
         public new Camera camera;
+        
+        public float sideFactor = 0.75f;
+        
         public void Awake()
         {
             Assert.IsNotNull(camera);
         }
 
-        public void Start()
+        public void Update()
         {
             var physicsScale = PuckSetup.PhysicsScale;
 
-            var side     = BoardMeasurements.PlayingSide;
+            var halfSide     = BoardMeasurements.PlayingSide / 2.0f;
 
-            camera.orthographicSize = physicsScale * (side * 0.75f);
+            camera.orthographicSize = physicsScale * (halfSide * sideFactor) * (1 / camera.aspect);
         }
     }
 }

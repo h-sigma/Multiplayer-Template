@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using HarshCommon.Patterns.Registry;
+using UnityEngine;
 
 namespace Carrom
 {

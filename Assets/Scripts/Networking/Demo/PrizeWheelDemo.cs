@@ -18,7 +18,7 @@ namespace Networking.Demo
 
         public void Start()
         {
-            if (!PlayFabTitleConfig.instance.IsLoggedIn)
+            if (!PlayFabTitleConfig.Instance.IsLoggedIn)
             {
                 PlayFabAuthService.OnLoginSuccess += GetInventory;
                 PlayFabAuthService.Instance.Authenticate(Authtypes.Silent);

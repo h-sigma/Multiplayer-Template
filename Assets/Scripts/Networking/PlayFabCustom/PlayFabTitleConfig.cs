@@ -1,6 +1,7 @@
 ﻿using System;
+using HarshCommon.Patterns.Singleton;
+using HarshCommon.Utilities.Attributes;
 using UnityEngine;
-using Utility;
 
 namespace Networking.PlayFabCustom
 {

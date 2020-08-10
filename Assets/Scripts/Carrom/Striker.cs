@@ -1,4 +1,6 @@
 ﻿using Carrom.UI;
+using HarshCommon.Patterns.Registry;
+using HarshCommon.Utilities;
 using Networking.Foundation;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -21,7 +23,6 @@ namespace Carrom
         public float noShootRadius = 0.05f;
 
         public float maxRadius  = 0.25f;
-        public float flickForce = 4;
 
         #region SliderLerp
         private float _baselinePos;
@@ -72,13 +73,12 @@ namespace Carrom
             if (scale <= 0.0f)
             {
                 Debug.Log($"Not shot. Scale {scale} is less than minimum radius {noShootRadius}.");
+                return;
             }
 
             DoShot(direction, scale);
             strikerUi.gameObject.SetActive(false);
         }
-
-        public Vector3 scalexyz = Vector3.one;
 
         public void OnDrag(PointerEventData eventData)
         {
@@ -98,7 +98,7 @@ namespace Carrom
         {
             Assert.IsNotNull(rigidbody, "Must have rigidbody on striker.");
 
-            Match.Instance.SubmitShot(_baselinePos, Mathf.Atan2(direction.y, direction.x));
+            Match.Instance.SubmitShot(_baselinePos, Mathf.Atan2(direction.y, direction.x), scale01);
         }
 
         #endregion

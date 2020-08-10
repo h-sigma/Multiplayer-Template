@@ -1,0 +1,6 @@
+[submodule "Assets/UGUIFundamentals"]
+	path = Assets/UGUIFundamentals
+	url = https://github.com/h-sigma/UGUIFundamentals
+[submodule "Assets/HarshCommon"]
+	path = Assets/HarshCommon
+	url = https://github.com/h-sigma/HarshCommon

@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using HarshCommon.NetworkStream;
+using HarshCommon.Patterns.Singleton;
+using HarshCommon.Utilities;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 
 namespace Networking.Foundation
 {
@@ -11,7 +15,7 @@ namespace Networking.Foundation
         FreeForAll
     }
 
-    [System.Serializable]
+    [Serializable]
     public class GameConfig
     {
         public RuleSet ruleSet;
@@ -21,21 +25,10 @@ namespace Networking.Foundation
 
     public class Matchmaker : Singleton<Matchmaker>
     {
-        //todo -- cleanup code to non-mono
+        #region Serializable
+
+        [Header("Config")]
         public GameConfig config;
-
-        public SceneTransition toMatch;
-
-        private bool lookingForMatches = false;
-
-        public bool LookingForMatches => lookingForMatches;
-
-        private MatchmakeResultData _currentMatchmakeResultData;
-        public MatchmakeResultData CurrentMatchmakeResultData
-        {
-            get => _currentMatchmakeResultData;
-            private set => _currentMatchmakeResultData = value;
-        }
 
         [Serializable]
         public class MatchmakeResultEvent : UnityEvent<MatchmakeResultData>
@@ -44,40 +37,82 @@ namespace Networking.Foundation
 
         public MatchmakeResultEvent onMatchFound;
         public UnityEvent           onMatchNotFound;
+
+        #endregion
+
+        #region Properties
         
+        [SerializeField]
+        private bool lookingForMatches = false;
+        public  bool LookingForMatches => lookingForMatches;
+
+        private long _lastMatchmakeAttemptTime = 0;
+
+        private MatchmakeResultData _currentMatchmakeResultData;
+
+        public MatchmakeResultData CurrentMatchmakeResultData
+        {
+            get => _currentMatchmakeResultData;
+            private set => _currentMatchmakeResultData = value;
+        }
+
+        #endregion
+
+        public void OnEnable()
+        {
+            NetworkStream<MatchmakeResultData>.OnStreamHasItems += FoundMatch;
+        }
+
+        public void OnDisable()
+        {
+            NetworkStream<MatchmakeResultData>.OnStreamHasItems -= FoundMatch;
+        }
+
         public void BeginMatchmake()
         {
+            if (LookingForMatches) return;
+            lookingForMatches = true;
+
+            _lastMatchmakeAttemptTime = DateTime.Now.Ticks;
+
             var matchmakeRequestData = new MatchmakeRequestData {Bet = config.bet, PlayerCount = config.playerCount};
 
             ClientSend.MatchmakeRequest(ref matchmakeRequestData);
+        }
 
-            onMatchFound.AddListener(OnMatchmakeSuccess);
-            onMatchNotFound.AddListener(OnMatchmakeFail);
-
-            lookingForMatches = true;
-
-            void OnMatchmakeSuccess(MatchmakeResultData result)
+        private void FoundMatch(IEnumerable<NetworkStream<MatchmakeResultData>.DataWrapper> results)
+        {
+            foreach (var data in results)
             {
-                //todo -- should be returned through network
-                CurrentMatchmakeResultData = result;
-                toMatch.TryTransition(true);
-            }
-
-            void OnMatchmakeFail()
-            {
-                Debug.Log($"Failed to matchmake.");
+                if (data.IsFresh(_lastMatchmakeAttemptTime))
+                {
+                    if(lookingForMatches)
+                    {
+                        if(!FoundMatch(data.Data)) data.MarkForRemoval();
+                    }
+                }
+                else
+                {
+                    data.MarkForRemoval();
+                }
             }
         }
 
-        public void FoundMatch(MatchmakeResultData data)
+        private bool FoundMatch(MatchmakeResultData data)
         {
             if (string.IsNullOrEmpty(data.Auth))
             {
+                Debug.Log($"Failed to matchmake.");
+                lookingForMatches = false;
                 onMatchNotFound?.Invoke();
+                return false;
             }
             else
             {
+                CurrentMatchmakeResultData = data;
+                lookingForMatches         = false;
                 onMatchFound?.Invoke(data);
+                return true;
             }
         }
     }

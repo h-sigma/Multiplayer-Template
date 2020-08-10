@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using HarshCommon.Patterns.Singleton;
+using HarshCommon.Utilities;
 using UnityEngine;
 
 namespace Networking.Foundation

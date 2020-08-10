@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using HarshCommon.Networking;
+using HarshCommon.Patterns.Registry;
+using HarshCommon.Utilities;
 using Networking.Foundation;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
-using Utility;
+using UnityEngine.Serialization;
 
 namespace Carrom
 {
@@ -14,7 +17,8 @@ namespace Carrom
         Player1 = 0,
         Player2 = 1,
         Player3 = 2,
-        Player4 = 3
+        Player4 = 3,
+        None = 4
     }
 
     public enum TokenColor
@@ -43,7 +47,32 @@ namespace Carrom
 
         public BoardSimulation simulation;
 
-        public UnityEvent onStateChange;
+        #region Events
+
+        [Serializable]
+        public class GameplayEvent : UnityEvent<CarromGameplay>
+        {
+        }
+
+        public GameplayEvent onGameStart;
+
+        [FormerlySerializedAs("onBeforePlayTurn")]
+        public GameplayEvent onBeforeShootStriker;
+
+        public GameplayEvent onAfterShootStriker;
+
+        public GameplayEvent onStabilize;
+
+        [Serializable]
+        public class StateChangeEvent : UnityEvent<State>
+        {
+        }
+
+        public StateChangeEvent onStateChange;
+
+        public GameplayEvent onTurnChange;
+
+        #endregion
 
         #endregion
 
@@ -175,14 +204,33 @@ namespace Carrom
 
         #endregion
 
-        #region Fields/Properties/Events
+        #region Fields
 
         private State _state;
 
         private Dictionary<GameTokenType, List<GameToken>> _pendingPocketResolutions = InitializeDict();
-        public  PlayerNumber                               AwaitingTurn => _state?.awaitingTurn ?? PlayerNumber.Player1;
 
         private bool _isStableCache = false;
+
+        [SerializeField]
+        private bool _isBlockedByAnimation;
+
+        [SerializeField]
+        private int _lastTurnStarted;
+
+        #endregion
+
+        #region Pure Properties
+
+        public State state => _state;
+
+        public bool IsBlockedByAnimation
+        {
+            get => _isBlockedByAnimation;
+            set => _isBlockedByAnimation = value;
+        }
+
+        public PlayerNumber AwaitingTurn => _state?.awaitingTurn ?? PlayerNumber.Player1;
 
         public bool IsStable
         {
@@ -221,6 +269,8 @@ namespace Carrom
                     }
 
                     simulation.striker.rigidbody.velocity = Vector3.zero;
+
+                    onStabilize.Invoke(this);
                 }
 
                 _isStableCache = isStable;
@@ -230,12 +280,45 @@ namespace Carrom
 
         #endregion
 
-        public void TryDoTurn(TurnStartData turnStart)
+        #region Public
+
+        public void BeginGame(Match match)
         {
-            Assert.IsTrue(turnStart.PlayerNumber == _state.awaitingTurn,
-                "Tried to play a turn from player that wasn't being awaited.");
+            _state                = new State(match.PlayerCount);
+            _isStableCache        = false;
+            _isBlockedByAnimation = false;
+            _lastTurnStarted      = 0;
+
+            simulation.Generate();
+
+            onGameStart.Invoke(this);
+        }
+
+        public IEnumerator TryDoTurn(TurnStartData turnStart, Action onCompleted, Action onFailed)
+        {
+            try
+            {
+                Assert.IsTrue(turnStart.PlayerNumber == _state.awaitingTurn,
+                    "Tried to play a turn from player that wasn't being awaited.");
+            }
+            catch
+            {
+                onFailed?.Invoke();
+                throw;
+            }
+
+            //do some animation
+            onBeforeShootStriker.Invoke(this);
+            
+            _lastTurnStarted = turnStart.TurnId;
+
+            yield return new WaitUntil(() => !IsBlockedByAnimation);
 
             DoTurn(turnStart.Baseline01, turnStart.AngleRad, turnStart.Force);
+
+            onAfterShootStriker.Invoke(this);
+                
+            onCompleted?.Invoke();
         }
 
         public void Pocket(Pocket pocketedAt, GameToken token)
@@ -244,6 +327,20 @@ namespace Carrom
             _pendingPocketResolutions[token.RegisterableType].Add(token);
             token.TemporaryRemoveFromSimulation();
         }
+
+        public bool CanStartTurn(int turnId)
+        {
+            return !IsBlockedByAnimation && turnId > _state.turnId && _lastTurnStarted < turnId;
+        }
+
+        public bool CanEndTurn(int turnId)
+        {
+            return !IsBlockedByAnimation && _lastTurnStarted == turnId && turnId > _state.turnId;
+        }
+
+        #endregion
+
+        #region Rules/Pocket Handling (privates)
 
         private void DoTurn(float baselinePosition01, float angle, float force)
         {
@@ -276,9 +373,6 @@ namespace Carrom
 
             var position = FindStrikerValidPosition(striker, baselinePosition01);
 
-            Debug.Log(
-                $"Position changed from {striker.rigidbody.position.ToString("F4")} to {position.ToString("F4")}.");
-
             striker.rigidbody.position = position;
             striker.rigidbody.AddForce(new Vector3(dirx, diry, 0) * force, ForceMode.Impulse);
         }
@@ -288,8 +382,8 @@ namespace Carrom
             var baseline01     = baselinePosition01;
             var playerBaseline = simulation.GetBaseline(AwaitingTurn, Match.Instance.MatchData.PlayerNames.Length);
 
-            var segments           = 20;
-            var baselineCheckDelta = BoardMeasurements.BaseLineLength / segments;
+            var baselineSegments   = 20;
+            var baselineCheckDelta = BoardMeasurements.BaseLineLength / baselineSegments;
 
             var testPosition = playerBaseline.GetPosition(baseline01);
             while (!IsValidPosition(striker, testPosition) && baseline01 <= 1.0f)
@@ -333,6 +427,8 @@ namespace Carrom
             return isValid;
         }
 
+        #endregion
+
         private static Dictionary<GameTokenType, List<GameToken>> InitializeDict()
         {
             var result = new Dictionary<GameTokenType, List<GameToken>>();
@@ -343,11 +439,6 @@ namespace Carrom
             }
 
             return result;
-        }
-
-        private static TokenColor GetOtherColor(TokenColor color)
-        {
-            return color == TokenColor.Black ? TokenColor.White : TokenColor.Black;
         }
 
         private void Place(GameToken token)
@@ -378,12 +469,16 @@ namespace Carrom
             token.rigidbody.position = candidatePosition;
         }
 
+        #region Network Shenanigans
+
         public void LoadStateFromPendingTurn(TurnEndData pendingTurn)
         {
             foreach (var pair in _pendingPocketResolutions)
             {
                 pair.Value.ForEach(token => token.ReturnToSimulation());
             }
+
+            bool turnPlayerChanged = _state.awaitingTurn != pendingTurn.AwaitingTurn;
 
             _state.progress     = pendingTurn.Progresses;
             _state.state        = pendingTurn.CoverStroke ? GameplayState.CoverStroke : GameplayState.Stroke;
@@ -439,20 +534,17 @@ namespace Carrom
                 Debug.Log($"No queens in scene.");
             }
 
+            onStateChange.Invoke(state);
 
-            onStateChange.Invoke();
+            if (turnPlayerChanged) onTurnChange.Invoke(this);
         }
 
-        public void BeginGame(Match match)
-        {
-            _state = new State(match.PlayerCount);
-
-            simulation.Generate();
-        }
+        #endregion
 
         public void Awake()
         {
-            onStateChange.AddListener(() => { _isStableCache = false; });
+            onStateChange.AddListener((stte) => { _isStableCache = false; });
+            //todo -- ??
         }
     }
 }

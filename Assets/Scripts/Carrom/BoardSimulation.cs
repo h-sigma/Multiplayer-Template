@@ -30,6 +30,7 @@ namespace Carrom
         public override void Awake()
         {
             base.Awake();
+            SetManual(false);
         }
         
         public override void Generate()
