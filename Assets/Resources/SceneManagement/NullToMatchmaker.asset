@@ -10,7 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 944f625446c0edb4b801b29fde3a0219, type: 3}
-  m_Name: NullToMatchmaking
+  m_Name: NullToMatchmaker
   m_EditorClassIdentifier: 
-  from: -1
-  to: 4
+  from:
+    sceneAsset: {fileID: 0}
+    scenePath: 
+  to:
+    sceneAsset: {fileID: 102900000, guid: 92144f6b46e2ffe4993cb73c58f24be4, type: 3}
+    scenePath: Assets/Scenes/Matchmake Scene.unity

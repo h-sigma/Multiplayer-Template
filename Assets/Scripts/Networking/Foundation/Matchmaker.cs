@@ -88,6 +88,7 @@ namespace Networking.Foundation
                 {
                     if(lookingForMatches)
                     {
+                        //if not found a match, make sure to remove this data
                         if(!FoundMatch(data.Data)) data.MarkForRemoval();
                     }
                 }
@@ -109,6 +110,7 @@ namespace Networking.Foundation
             }
             else
             {
+                Debug.Log($"Succeeded matchmake.\n {JsonImpl.ToJson(data)}");
                 CurrentMatchmakeResultData = data;
                 lookingForMatches         = false;
                 onMatchFound?.Invoke(data);

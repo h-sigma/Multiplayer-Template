@@ -50,7 +50,7 @@ namespace Carrom.UI
 
         public void UpdateUI(CarromGameplay.State state)
         {
-            if (state == null || state.progress.Length <= (int) number)
+            if (state == null || state.progress.Length <= (int) number || number == PlayerNumber.None)
             {
                 SetUnused();
                 return;

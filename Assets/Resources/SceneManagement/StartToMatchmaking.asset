@@ -12,5 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 944f625446c0edb4b801b29fde3a0219, type: 3}
   m_Name: StartToMatchmaking
   m_EditorClassIdentifier: 
-  from: 2
-  to: 4
+  from:
+    sceneAsset: {fileID: 102900000, guid: 520680e88681b2d4d899b8fdd785ac54, type: 3}
+    scenePath: Assets/Scenes/Start Scene.unity
+  to:
+    sceneAsset: {fileID: 102900000, guid: 67b6c09af2c88d04995a06b2f0e84312, type: 3}
+    scenePath: Assets/Scenes/MatchMaking.unity

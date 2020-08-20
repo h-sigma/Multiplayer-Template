@@ -178,6 +178,7 @@ namespace Networking.Foundation
             {
                 if (turnStart.IsNotExpired && isInMatch && gameplay.CanStartTurn(turnStart.Data.TurnId))
                 {
+                    Debug.Log($"Turn start received from server.");
                     gameplay.StartCoroutine(gameplay.TryDoTurn(turnStart.Data, () => turnStart.MarkForRemoval(), null));
                 }
             }
@@ -185,12 +186,11 @@ namespace Networking.Foundation
 
         public void TurnEnd(IEnumerable<NetworkStream<TurnEndData>.DataWrapper> dataWrappers)
         {
-            Debug.Log($"Turn End received from Server.");
-
             foreach (var turnEnd in dataWrappers)
             {
                 if (turnEnd.IsNotExpired && isInMatch && gameplay.CanEndTurn(turnEnd.Data.turnId))
                 {
+                    Debug.Log($"Turn End received from Server.");
                     gameplay.LoadStateFromPendingTurn(turnEnd.Data);
                     turnEnd.MarkForRemoval();
                 }

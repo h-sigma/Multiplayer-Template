@@ -289,8 +289,6 @@ namespace Carrom
             _isBlockedByAnimation = false;
             _lastTurnStarted      = 0;
 
-            simulation.Generate();
-
             onGameStart.Invoke(this);
         }
 
@@ -356,6 +354,8 @@ namespace Carrom
                 Debug.LogError($"Striker not found in scene {this.gameObject.scene.name}");
                 Debug.Break();
             }
+
+            _isStableCache = false;
 
             void ClearPendingPockets()
             {
@@ -545,6 +545,11 @@ namespace Carrom
         {
             onStateChange.AddListener((stte) => { _isStableCache = false; });
             //todo -- ??
+        }
+
+        public void Update()
+        {
+            bool x = IsStable;
         }
     }
 }
